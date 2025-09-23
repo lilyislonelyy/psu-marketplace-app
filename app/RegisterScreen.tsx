@@ -1,15 +1,15 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-    Alert,
-    Image,
-    ImageSourcePropType,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  ImageSourcePropType,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -21,6 +21,7 @@ import { auth } from "../firebaseConfig";
 const db = getFirestore();
 
 const RegisterScreen: React.FC = () => {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -71,7 +72,9 @@ const RegisterScreen: React.FC = () => {
                 source={require("../assets/CartLogo.png") as ImageSourcePropType}
                 style={styles.logoImage}
               />
-              <Text style={styles.logoText}>PSU Market place</Text>
+              <TouchableOpacity onPress={() => router.push("/LoginScreen")}>
+                <Text style={styles.logoText}>PSU Market place</Text>
+              </TouchableOpacity>
             </View>
             <TouchableOpacity>
               <Image
@@ -118,7 +121,10 @@ const RegisterScreen: React.FC = () => {
               <Text style={styles.signupText}>Sign up</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.switchButton}>
+            <TouchableOpacity
+              style={styles.switchButton}
+              onPress={() => router.push("/SigninScreen")}
+            >
               <Text style={styles.switchText}>Already have an account</Text>
             </TouchableOpacity>
           </View>
