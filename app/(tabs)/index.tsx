@@ -42,6 +42,7 @@ const Index: React.FC = () => {
           <TextInput
             placeholder="Looking for something special?"
             style={{ flex: 1 }}
+            placeholderTextColor="#aaa"
           />
           <Image
             source={require("../../assets/Filter.png") as ImageSourcePropType}
