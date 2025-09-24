@@ -57,8 +57,8 @@ const TabLayout: React.FC = () => {
             <Image
               source={require("../../assets/tabs/Add.png") as ImageSourcePropType}
               style={{
-                width: 32,
-                height: 32,
+                width: 28,
+                height: 28,
                 tintColor: focused ? "#2C32FA" : "#7D848F",
               }}
             />
@@ -74,7 +74,7 @@ const TabLayout: React.FC = () => {
               source={require("../../assets/tabs/Chat.png") as ImageSourcePropType}
               style={{
                 width: 28,
-                height: 28,
+                height: 25,
                 tintColor: focused ? "#2C32FA" : "#7D848F",
               }}
             />
