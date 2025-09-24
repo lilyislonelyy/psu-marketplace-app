@@ -82,7 +82,7 @@ const Index: React.FC = () => {
             </View>
           </View>
 
-          {/* ปุ่ม action */}
+          {/* ปุ่ม action (เหลือ 3 ปุ่ม) */}
           <View style={styles.actionRow}>
             <TouchableOpacity>
               <Image
@@ -93,12 +93,6 @@ const Index: React.FC = () => {
             <TouchableOpacity>
               <Image
                 source={require("../../assets/home/X.png") as ImageSourcePropType}
-                style={styles.actionIcon}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Image
-                source={require("../../assets/home/Like.png") as ImageSourcePropType}
                 style={styles.actionIcon}
               />
             </TouchableOpacity>
