@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: "#fff" },
 
     header: {
-        height: 90,
+        height: 80,
         flexDirection: "row",
         alignItems: "center",   // 👉 จัดให้แนวตั้งอยู่ตรงกลาง header
         justifyContent: "space-between",

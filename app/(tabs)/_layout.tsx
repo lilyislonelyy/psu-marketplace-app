@@ -9,8 +9,12 @@ const TabLayout: React.FC = () => {
         headerShown: false,
         tabBarShowLabel: false, // ไม่โชว์ชื่อใต้ไอคอน
         tabBarStyle: {
-          height: 60,
+          height: 90,
           backgroundColor: "#fff",
+          flexDirection: "row",
+          alignItems: "center",   // 👉 จัดให้แนวตั้งอยู่ตรงกลาง header
+          justifyContent: "space-between",
+          paddingHorizontal: 16,
         },
       }}
     >
