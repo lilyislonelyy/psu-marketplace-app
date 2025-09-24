@@ -47,7 +47,7 @@ const TabLayout: React.FC = () => {
       />
 
       <Tabs.Screen
-        name="add"
+        name="post"
         options={{
           tabBarIcon: ({ focused }: { focused: boolean }) => (
             <Image
