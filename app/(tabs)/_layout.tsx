@@ -89,7 +89,7 @@ const TabLayout: React.FC = () => {
             <Image
               source={require("../../assets/tabs/Profile.png") as ImageSourcePropType}
               style={{
-                width: 28,
+                width: 22,
                 height: 28,
                 tintColor: focused ? "#2C32FA" : "#7D848F",
               }}

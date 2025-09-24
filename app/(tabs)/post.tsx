@@ -74,7 +74,10 @@ const PostScreen: React.FC = () => {
                 <View style={styles.row}>
                     <Image
                         source={require("../../assets/post/Location.png")}
-                        style={styles.icon}
+                        style={{width: 18,
+                        height: 22,
+                        marginRight: 10, 
+                        tintColor: "#666"}}
                     />
                     <TextInput
                         placeholder="Location"
@@ -181,6 +184,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         height: 56,
     },
-    icon: { width: 22, height: 22, marginRight: 10, tintColor: "#666" },
+    icon: { width: 20, height: 20, marginRight: 10, tintColor: "#666" },
     rowInput: { flex: 1, fontSize: 16, color: "#333" },
 });
