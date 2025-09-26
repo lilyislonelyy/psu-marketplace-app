@@ -42,7 +42,8 @@ const RegisterScreen: React.FC = () => {
       // สร้าง document ใน Firestore
       await setDoc(doc(db, "users", user.uid), {
         email: user.email,
-        name: "",
+        // ✅ ตั้งชื่อ default เป็น user + 6 ตัวแรกของ uid
+        name: "user" + user.uid.substring(0, 6),
         faculty: "",
         phone: "",
         instagram: "",
