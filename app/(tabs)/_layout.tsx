@@ -35,7 +35,7 @@ const TabLayout: React.FC = () => {
       />
 
       <Tabs.Screen
-        name="cart"
+        name="order"
         options={{
           tabBarIcon: ({ focused }: { focused: boolean }) => (
             <Image
