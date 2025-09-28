@@ -76,12 +76,7 @@ const RegisterScreen: React.FC = () => {
                 <Text style={styles.logoText}>PSU Market place</Text>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity>
-              <Image
-                source={require("../assets/Language.png") as ImageSourcePropType}
-                style={styles.langIcon}
-              />
-            </TouchableOpacity>
+            
           </View>
 
           {/* Form */}

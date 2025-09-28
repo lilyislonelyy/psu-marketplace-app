@@ -10,8 +10,9 @@ import {
   setDoc,
   where,
 } from "firebase/firestore";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
+  Animated,
   Dimensions,
   Image,
   ImageBackground,
@@ -21,87 +22,59 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { auth, db } from "../../firebaseConfig";
-
-// 👇 import เพิ่ม
 import { useIsFocused } from "@react-navigation/native";
 
-const { height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 const Index: React.FC = () => {
   const router = useRouter();
   const isFocused = useIsFocused();
+
   const [products, setProducts] = useState<any[]>([]);
   const [disliked, setDisliked] = useState<any[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [imageIndex, setImageIndex] = useState(0);
 
-  // โหลด favorites ของ user
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  const currentProduct = products[currentIndex];
+  const images: string[] = currentProduct?.image_urls || [];
+
+  // โหลด favorites
   const fetchFavorites = async () => {
-  const user = auth.currentUser;
-  if (!user) return;
-
-  try {
-    const snap = await getDocs(collection(db, "favorites", user.uid, "items")); // ✅ แก้ path
+    const user = auth.currentUser;
+    if (!user) return;
+    const snap = await getDocs(collection(db, "favorites", user.uid, "items"));
     const favIds: string[] = [];
     snap.forEach((docSnap) => favIds.push(docSnap.id));
     setFavorites(favIds);
-  } catch (err) {
-    console.error("❌ Error loading favorites:", err);
-  }
-};
+  };
 
   // โหลดโพสต์
   const fetchProducts = async () => {
-    try {
-      const user = auth.currentUser;
-      const q = query(
-        collection(db, "products"),
-        where("quantity", ">", 0),
-        orderBy("createdAt", "desc")
-      );
-      const snap = await getDocs(q);
+    const user = auth.currentUser;
+    const q = query(
+      collection(db, "products"),
+      where("quantity", ">", 0),
+      orderBy("createdAt", "desc")
+    );
+    const snap = await getDocs(q);
 
-      const items: any[] = [];
-      const sellerCache: Record<string, string> = {};
-
-      for (const docSnap of snap.docs) {
-        const data = docSnap.data();
-
-        if (user && data.seller_id === user.uid) continue;
-        if (favorites.includes(docSnap.id)) continue;
-
-        let sellerName = "Unknown";
-        if (data.seller_id) {
-          if (sellerCache[data.seller_id]) {
-            sellerName = sellerCache[data.seller_id];
-          } else {
-            try {
-              const sellerDoc = await getDoc(doc(db, "users", data.seller_id));
-              if (sellerDoc.exists()) {
-                sellerName = sellerDoc.data().name || sellerName;
-                sellerCache[data.seller_id] = sellerName;
-              }
-            } catch (err) {
-              console.warn("⚠️ Error fetching seller name:", err);
-            }
-          }
-        }
-
-        items.push({
-          id: docSnap.id,
-          ...data,
-          seller_name: sellerName,
-        });
-      }
-
-      setProducts(items);
-      setCurrentIndex(0);
-    } catch (err) {
-      console.error("❌ Error loading products:", err);
+    const items: any[] = [];
+    for (const docSnap of snap.docs) {
+      const data = docSnap.data();
+      if (user && data.seller_id === user.uid) continue;
+      if (favorites.includes(docSnap.id)) continue;
+      items.push({ id: docSnap.id, ...data });
     }
+    setProducts(items);
+    setCurrentIndex(0);
+    setImageIndex(0);
   };
 
   useEffect(() => {
@@ -110,44 +83,47 @@ const Index: React.FC = () => {
     }
   }, [isFocused]);
 
-  const currentProduct = products[currentIndex];
-
-  // ปัดซ้าย
-  const handleDislike = () => {
-    if (!currentProduct) return;
-    setDisliked([...disliked, currentProduct]);
-    nextProduct();
-  };
-
-  // ปัดขวา = add to favorites
-  const handleAddToCart = async () => {
-  if (!currentProduct) return;
-  const user = auth.currentUser;
-  if (!user) return;
-
-  try {
-    const favRef = doc(db, "favorites", user.uid, "items", currentProduct.id); // ✅ แก้ path
-
-    await setDoc(favRef, {
-      ...currentProduct,
-      addedAt: new Date(),
+  // ---------- Slide ----------
+  const animateSlide = (direction: "left" | "right", onEnd?: () => void) => {
+    Animated.timing(slideAnim, {
+      toValue: direction === "left" ? -width : width,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      slideAnim.setValue(0);
+      onEnd && onEnd();
     });
-
-    console.log("✅ Added to favorites:", currentProduct.id);
-
-    setFavorites((prev) => [...prev, currentProduct.id]);
-    nextProduct();
-  } catch (err) {
-    console.error("❌ Error adding to favorites:", err);
-  }
-};
+  };
 
   const nextProduct = () => {
     if (currentIndex < products.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      setCurrentIndex((prev) => prev + 1);
+      setImageIndex(0);
     } else {
       setProducts([]);
     }
+  };
+
+  // ❌ Dislike
+  const handleDislike = () => {
+    if (!currentProduct) return;
+    animateSlide("left", () => {
+      setDisliked((prev) => [...prev, currentProduct]);
+      nextProduct();
+    });
+  };
+
+  // ✅ Like
+  const handleAddToCart = async () => {
+    if (!currentProduct) return;
+    const user = auth.currentUser;
+    if (!user) return;
+    const favRef = doc(db, "favorites", user.uid, "items", currentProduct.id);
+    await setDoc(favRef, { ...currentProduct, addedAt: new Date() });
+    animateSlide("right", () => {
+      setFavorites((prev) => [...prev, currentProduct.id]);
+      nextProduct();
+    });
   };
 
   const handleRefresh = () => {
@@ -157,6 +133,17 @@ const Index: React.FC = () => {
       setCurrentIndex(0);
     } else {
       fetchProducts();
+    }
+  };
+
+  // ---------- Image navigation ----------
+  const handleImageTap = (side: "left" | "right") => {
+    if (!images.length) return;
+    if (side === "right" && imageIndex < images.length - 1) {
+      setImageIndex((prev) => prev + 1);
+    }
+    if (side === "left" && imageIndex > 0) {
+      setImageIndex((prev) => prev - 1);
     }
   };
 
@@ -173,104 +160,76 @@ const Index: React.FC = () => {
             <Text style={styles.headerTitle}>What are you looking for today?</Text>
             <Text style={styles.subTitle}>Welcome to PSU Market place</Text>
           </View>
-          <Image
-            source={require("../../assets/Notification.png") as ImageSourcePropType}
-            style={styles.notifyIcon}
-          />
-        </View>
-
-        {/* Search bar */}
-        <View style={styles.searchBar}>
-          <Image
-            source={require("../../assets/Search.png") as ImageSourcePropType}
-            style={styles.iconSmall}
-          />
-          <TextInput
-            placeholder="Looking for something special?"
-            style={{ flex: 1 }}
-          />
-          <Image
-            source={require("../../assets/Filter.png") as ImageSourcePropType}
-            style={styles.iconSmall}
-          />
+          
         </View>
 
         {/* Product card */}
         {currentProduct ? (
-          <ImageBackground
-            source={{ uri: currentProduct.image_urls?.[0] }}
-            style={styles.productCard}
-            imageStyle={{ borderRadius: 16 }}
-          >
-            {/* ข้อมูลสินค้า */}
-            <View style={styles.productInfoWrapper}>
-              <BlurView intensity={50} tint="dark" style={styles.productInfoOverlay} />
-              <View style={styles.productInfo}>
-                <Text style={styles.productTitle}>
-                  {currentProduct.description}{" "}
-                  <Text style={styles.price}>({currentProduct.type})</Text>
-                </Text>
-                <Text style={styles.meta}>
-                  {currentProduct.price}฿ • {currentProduct.quantity} pcs
-                </Text>
-
-                <TouchableOpacity
-                  style={styles.metaRow}
-                  onPress={() =>
-                    router.push({
-                      pathname: "../ProfileView/[id]",
-                      params: { id: currentProduct.seller_id },
-                    })
-                  }
-                >
-                  <Image
-                    source={require("../../assets/home/ShopName.png")}
-                    style={styles.metaIcon}
+          <Animated.View style={{ flex: 1, transform: [{ translateX: slideAnim }] }}>
+            <ImageBackground
+              source={{ uri: images[imageIndex] }}
+              style={styles.productCard}
+              imageStyle={{ borderRadius: 16 }}
+            >
+              {/* Progress bar */}
+              <View style={styles.progressRow}>
+                {images.map((_: string, idx: number) => (
+                  <View
+                    key={idx}
+                    style={[
+                      styles.progressBar,
+                      { opacity: idx === imageIndex ? 1 : 0.3 },
+                    ]}
                   />
-                  <Text style={[styles.meta, { textDecorationLine: "underline" }]}>
-                    Seller: {currentProduct.seller_name || "Unknown"}
+                ))}
+              </View>
+
+              {/* Click zones */}
+              <View style={styles.clickRow}>
+                <Pressable style={{ flex: 1 }} onPress={() => handleImageTap("left")} />
+                <Pressable style={{ flex: 1 }} onPress={() => handleImageTap("right")} />
+              </View>
+
+              {/* ข้อมูลสินค้า */}
+              <View style={styles.productInfoWrapper}>
+                <BlurView intensity={50} tint="dark" style={styles.productInfoOverlay} />
+                <View style={styles.productInfo}>
+                  <Text style={styles.productTitle}>
+                    {currentProduct.description}{" "}
+                    <Text style={styles.price}>({currentProduct.type})</Text>
                   </Text>
-                </TouchableOpacity>
-
-                <View style={styles.metaRow}>
-                  <Image
-                    source={require("../../assets/home/Location.png")}
-                    style={styles.metaIcon}
-                  />
                   <Text style={styles.meta}>
-                    {currentProduct.location || "Faculty / Department / Address"}
+                    {currentProduct.price}฿ • {currentProduct.quantity} pcs
                   </Text>
                 </View>
               </View>
-            </View>
 
-            {/* ปุ่ม action */}
-            <View style={styles.actionRow}>
-              <TouchableOpacity onPress={handleDislike}>
-                <Image
-                  source={require("../../assets/home/X.png")}
-                  style={styles.actionIcon}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleRefresh}>
-                <Image
-                  source={require("../../assets/home/Refresh.png")}
-                  style={styles.actionIcon}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleAddToCart}>
-                <Image
-                  source={require("../../assets/home/Cart.png")}
-                  style={styles.actionIcon}
-                />
-              </TouchableOpacity>
-            </View>
-          </ImageBackground>
+              {/* ปุ่ม action */}
+              <View style={styles.actionRow}>
+                <TouchableOpacity onPress={handleDislike}>
+                  <Image
+                    source={require("../../assets/home/X.png")}
+                    style={styles.actionIcon}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleRefresh}>
+                  <Image
+                    source={require("../../assets/home/Refresh.png")}
+                    style={styles.actionIcon}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleAddToCart}>
+                  <Image
+                    source={require("../../assets/home/Cart.png")}
+                    style={styles.actionIcon}
+                  />
+                </TouchableOpacity>
+              </View>
+            </ImageBackground>
+          </Animated.View>
         ) : (
           <View style={styles.emptyFeed}>
-            <Text style={{ color: "gray", fontSize: 16 }}>
-              ไม่มีสินค้าเพิ่มเติมแล้ว
-            </Text>
+            <Text style={{ color: "gray", fontSize: 16 }}>ไม่มีสินค้าเพิ่มเติมแล้ว</Text>
             <TouchableOpacity style={styles.refreshBtn} onPress={handleRefresh}>
               <Text>Refresh Feed</Text>
             </TouchableOpacity>
@@ -309,6 +268,21 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     marginBottom: 16,
   },
+  progressRow: {
+    flexDirection: "row",
+    position: "absolute",
+    top: 10,
+    left: 10,
+    right: 10,
+  },
+  progressBar: {
+    flex: 1,
+    height: 4,
+    backgroundColor: "#fff",
+    marginHorizontal: 2,
+    borderRadius: 2,
+  },
+  clickRow: { ...StyleSheet.absoluteFillObject, flexDirection: "row" },
   productInfoWrapper: {
     position: "absolute",
     bottom: 90,
@@ -322,8 +296,6 @@ const styles = StyleSheet.create({
   productTitle: { fontSize: 20, fontWeight: "bold", color: "#fff" },
   price: { fontSize: 14, color: "#fff" },
   meta: { fontSize: 12, color: "#fff", marginTop: 2 },
-  metaRow: { flexDirection: "row", alignItems: "center", marginTop: 4 },
-  metaIcon: { width: 16, height: 16, marginRight: 6, resizeMode: "contain" },
   actionRow: {
     position: "absolute",
     bottom: 20,

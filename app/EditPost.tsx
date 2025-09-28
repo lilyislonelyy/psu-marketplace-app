@@ -174,6 +174,7 @@ export default function EditPost() {
             style={styles.rowInput}
             value={description}
             onChangeText={setDescription}
+            placeholderTextColor="#aaa"
           />
         </View>
 
@@ -189,6 +190,7 @@ export default function EditPost() {
             style={styles.rowInput}
             value={price}
             onChangeText={setPrice}
+            placeholderTextColor="#aaa"
           />
         </View>
 
@@ -203,6 +205,7 @@ export default function EditPost() {
             style={styles.rowInput}
             value={location}
             onChangeText={setLocation}
+            placeholderTextColor="#aaa"
           />
         </View>
 
@@ -251,6 +254,7 @@ export default function EditPost() {
             style={styles.rowInput}
             value={quantity}
             onChangeText={setQuantity}
+            placeholderTextColor="#aaa"
           />
         </View>
       </ScrollView>

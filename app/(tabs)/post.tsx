@@ -44,6 +44,7 @@ const PostScreen: React.FC = () => {
 
     // 📌 อัปโหลดรูป + Post
     const handlePost = async () => {
+  // ---------------- เช็ก input ของสินค้า ----------------
   if (!description.trim()) {
     Alert.alert("Error", "กรุณาใส่คำอธิบายสินค้า");
     return;
@@ -73,14 +74,25 @@ const PostScreen: React.FC = () => {
     const user = auth.currentUser;
     if (!user) return;
 
-    // 👉 ดึงชื่อจาก users collection
-    let sellerName = user.email; // fallback = email
+    // ---------------- เช็กโปรไฟล์ผู้ใช้ ----------------
     const userDoc = await getDoc(doc(db, "users", user.uid));
-    if (userDoc.exists()) {
-      sellerName = userDoc.data().name || sellerName;
+    if (!userDoc.exists()) {
+      Alert.alert("Error", "กรุณาแก้ไขโปรไฟล์ก่อนโพสต์สินค้า");
+      return;
     }
 
-    // 1) upload รูปทั้งหมด
+    const userData = userDoc.data();
+    if (!userData.name || !userData.faculty || !userData.phone) {
+      Alert.alert(
+        "Incomplete Profile",
+        "กรุณากรอกข้อมูลโปรไฟล์ให้ครบ (ชื่อ, คณะ, เบอร์โทร) ก่อนโพสต์สินค้า"
+      );
+      return;
+    }
+
+    let sellerName = userData.name || user.email; // 👈 ใช้ชื่อจริง ถ้าไม่มี fallback = email
+
+    // ---------------- upload รูป ----------------
     const uploadedUrls: string[] = [];
     for (const uri of images) {
       const response = await fetch(uri);
@@ -91,10 +103,10 @@ const PostScreen: React.FC = () => {
       uploadedUrls.push(url);
     }
 
-    // 2) save product ลง Firestore
+    // ---------------- save product ลง Firestore ----------------
     await addDoc(collection(db, "products"), {
       seller_id: user.uid,
-      seller_name: sellerName, // 👈 เก็บชื่อผู้ขาย
+      seller_name: sellerName,
       title: description.split(" ")[0] || "Untitled",
       description,
       price: Number(price),
@@ -113,10 +125,12 @@ const PostScreen: React.FC = () => {
     setType("");
     setQuantity("");
     setImages([]);
+
   } catch (err: any) {
     Alert.alert("Error", err.message);
   }
 };
+
     
 
 
@@ -191,6 +205,7 @@ const PostScreen: React.FC = () => {
                     style={styles.input}
                     value={description}
                     onChangeText={setDescription}
+                    placeholderTextColor="#aaa"
                 />
 
                 {/* Price */}
@@ -205,6 +220,7 @@ const PostScreen: React.FC = () => {
                         style={styles.rowInput}
                         value={price}
                         onChangeText={setPrice}
+                        placeholderTextColor="#aaa"
                     />
                 </View>
 
@@ -219,6 +235,7 @@ const PostScreen: React.FC = () => {
                         style={styles.rowInput}
                         value={location}
                         onChangeText={setLocation}
+                        placeholderTextColor="#aaa"
                     />
                 </View>
 
@@ -291,6 +308,7 @@ const PostScreen: React.FC = () => {
                         style={styles.rowInput}
                         value={quantity}
                         onChangeText={setQuantity}
+                        placeholderTextColor="#aaa"
                     />
                 </View>
             </ScrollView>

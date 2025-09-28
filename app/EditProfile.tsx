@@ -171,6 +171,7 @@ export default function EditProfile() {
                         value={name}
                         onChangeText={setName}
                         placeholder="Enter your name"
+                        placeholderTextColor="#aaa"
                     />
                 </View>
 
@@ -181,6 +182,7 @@ export default function EditProfile() {
                         value={faculty}
                         onChangeText={setFaculty}
                         placeholder="Faculty / Department"
+                        placeholderTextColor="#aaa"
                     />
                 </View>
 
@@ -192,6 +194,7 @@ export default function EditProfile() {
                         onChangeText={setPhone}
                         placeholder="Phone number"
                         keyboardType="phone-pad"
+                        placeholderTextColor="#aaa"
                     />
                 </View>
 
@@ -202,6 +205,7 @@ export default function EditProfile() {
                         value={instagram}
                         onChangeText={setInstagram}
                         placeholder="@username"
+                        placeholderTextColor="#aaa"
                     />
                 </View>
 
@@ -259,10 +263,10 @@ const styles = StyleSheet.create({
         width: "100%",
         marginBottom: 20,
     },
-    label: { fontSize: 13, color: "gray", marginBottom: 4 },
+    label: { fontSize: 13, color: "#aaa", marginBottom: 4 },
     input: {
         borderWidth: 1,
-        borderColor: "#ccc",
+        borderColor: "#aaa",
         borderRadius: 8,
         padding: 10,
         fontSize: 15,

@@ -33,16 +33,7 @@ export default function LoginScreen({ onSuccess }: LoginScreenProps) {
         end={{ x: 0, y: 1 }}
         style={styles.container}
       >
-        {/* ปุ่มเปลี่ยนภาษา มุมขวาบน */}
-        <TouchableOpacity
-          style={styles.langButton}
-          onPress={() => alert("Change Language")}
-        >
-          <Image
-            source={require("../assets/Language.png") as ImageSourcePropType}
-            style={styles.langIcon}
-          />
-        </TouchableOpacity>
+        
 
         <SafeAreaView style={styles.safeArea}>
           {/* โลโก้ */}
@@ -76,21 +67,7 @@ export default function LoginScreen({ onSuccess }: LoginScreenProps) {
               <Text style={styles.buttonText}>SIGN IN TO PSU MARKETPLACE</Text>
             </TouchableOpacity>
 
-            {/* ปุ่ม Google */}
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => handleSignIn("google")}
-            >
-              <Text style={styles.buttonText}>SIGN IN WITH GOOGLE</Text>
-            </TouchableOpacity>
-
-            {/* ปุ่ม Apple */}
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => handleSignIn("apple")}
-            >
-              <Text style={styles.buttonText}>SIGN IN WITH APPLE</Text>
-            </TouchableOpacity>
+            
 
             {/* Sign up link */}
             <Text style={styles.signup}>
