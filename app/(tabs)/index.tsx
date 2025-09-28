@@ -53,7 +53,7 @@ const Index: React.FC = () => {
       const userDoc = await getDoc(doc(db, "users", user.uid));
       if (userDoc.exists()) {
         const data = userDoc.data();
-        console.log("🔥 User profile data:", data); // Debug log
+        console.log("🔥 User profile data:", data);
         setProfileImage(data.photoURL || null); // ✅ ใช้ photoURL ให้ตรงกับ EditProfile
       }
     } catch (err) {
@@ -84,7 +84,7 @@ const Index: React.FC = () => {
     const items: any[] = [];
     for (const docSnap of snap.docs) {
       const data = docSnap.data();
-      if (user && data.seller_id === user.uid) continue;
+      if (user && data.seller_id === user.uid) continue; // ✅ เช็ก user null ก่อน
       if (favorites.includes(docSnap.id)) continue;
       items.push({ id: docSnap.id, ...data });
     }
@@ -93,12 +93,25 @@ const Index: React.FC = () => {
     setImageIndex(0);
   };
 
+  // ดักการเปลี่ยนสถานะ user (login/logout)
   useEffect(() => {
-    if (isFocused) {
-      fetchUserProfile();
-      fetchFavorites().then(() => fetchProducts());
-    }
-  }, [isFocused]);
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) {
+        // ✅ clear state ถ้า log out
+        setProfileImage(null);
+        setProducts([]);
+        setFavorites([]);
+        setDisliked([]);
+        setCurrentIndex(0);
+        setImageIndex(0);
+      } else {
+        // ✅ ถ้า login แล้วโหลดข้อมูล
+        fetchUserProfile();
+        fetchFavorites().then(() => fetchProducts());
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   // ---------- Slide ----------
   const animateSlide = (direction: "left" | "right", onEnd?: () => void) => {
@@ -172,8 +185,8 @@ const Index: React.FC = () => {
           <Image
             source={
               profileImage
-                ? { uri: profileImage } // ✅ โหลดจาก Firestore
-                : require("../../assets/Profile.png") // default
+                ? { uri: profileImage }
+                : require("../../assets/Profile.png")
             }
             style={styles.profileIcon}
           />
@@ -249,7 +262,7 @@ const Index: React.FC = () => {
           </Animated.View>
         ) : (
           <View style={styles.emptyFeed}>
-            <Text style={{ color: "gray", fontSize: 16 }}>No more products avaliable</Text>
+            <Text style={{ color: "gray", fontSize: 16 }}>No more products available</Text>
             <TouchableOpacity style={styles.refreshBtn} onPress={handleRefresh}>
               <Text>Refresh Feed</Text>
             </TouchableOpacity>
