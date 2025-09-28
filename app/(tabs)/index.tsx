@@ -63,17 +63,23 @@ const Index: React.FC = () => {
 
   // โหลด favorites → return favIds
   const fetchFavorites = async (): Promise<string[]> => {
-    const user = auth.currentUser;
-    if (!user) {
-      setFavorites([]);
-      return [];
-    }
+  const user = auth.currentUser;
+  if (!user) {
+    setFavorites([]); // ✅ clear ถ้า logout
+    return [];        // ✅ คืน array ว่างแทน query
+  }
+
+  try {
     const snap = await getDocs(collection(db, "favorites", user.uid, "items"));
     const favIds: string[] = [];
     snap.forEach((docSnap) => favIds.push(docSnap.id));
     setFavorites(favIds);
-    return favIds; // ✅ ส่งกลับไปใช้
-  };
+    return favIds;
+  } catch (err) {
+    console.error("❌ Error fetching favorites:", err);
+    return []; // ป้องกัน error เด้ง
+  }
+};
 
   // โหลดโพสต์ → ใช้ favIds ที่ได้จาก fetchFavorites
   const fetchProducts = async (favIds: string[] = []) => {

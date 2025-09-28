@@ -24,8 +24,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useIsFocused } from "@react-navigation/native"; // ✅ ใช้ hook นี้
+import { useIsFocused } from "@react-navigation/native";
 import { auth, db } from "../../firebaseConfig";
+import { onAuthStateChanged } from "firebase/auth"; // ✅ import
 
 const storage = getStorage();
 
@@ -36,70 +37,60 @@ const ProfileScreen: React.FC = () => {
   const [showMenu, setShowMenu] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const router = useRouter();
-  const isFocused = useIsFocused(); // ✅ ตรวจว่าอยู่หน้า Profile หรือไม่
+  const isFocused = useIsFocused();
 
-  // โหลดข้อมูลผู้ใช้
+  // ✅ โหลด user + products พร้อมดัก logout
   useEffect(() => {
-    const fetchUser = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        // logout → clear state
+        setUserData(null);
+        setProducts([]);
+        setShowMenu(false);
+        setSelectedPost(null);
+        return;
+      }
 
       try {
-        const ref = doc(db, "users", user.uid);
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          setUserData(snap.data());
+        // โหลด user
+        const refUser = doc(db, "users", user.uid);
+        const snapUser = await getDoc(refUser);
+        if (snapUser.exists()) setUserData(snapUser.data());
+
+        // โหลด products
+        if (isFocused) {
+          const q = query(
+            collection(db, "products"),
+            where("seller_id", "==", user.uid)
+          );
+          const snap = await getDocs(q);
+          const items: any[] = [];
+          snap.forEach((docSnap) =>
+            items.push({ id: docSnap.id, ...docSnap.data() })
+          );
+
+          items.sort((a, b) => {
+            const aTime = a.createdAt?.seconds || 0;
+            const bTime = b.createdAt?.seconds || 0;
+            return bTime - aTime;
+          });
+
+          setProducts(items);
         }
       } catch (err) {
-        console.error("❌ Error fetching user:", err);
+        console.error("❌ Error fetching data:", err);
       }
-    };
+    });
 
-    fetchUser();
-  }, []);
-
-  // โหลดโพสต์ใหม่ทุกครั้งที่เข้ามาหน้า Profile
-  useEffect(() => {
-    const fetchProducts = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
-
-      try {
-        const q = query(
-          collection(db, "products"),
-          where("seller_id", "==", user.uid)
-        );
-        const snap = await getDocs(q);
-        const items: any[] = [];
-        snap.forEach((docSnap) =>
-          items.push({ id: docSnap.id, ...docSnap.data() })
-        );
-
-        // 👉 จัดเรียงตาม createdAt (ล่าสุดขึ้นก่อน)
-        items.sort((a, b) => {
-          const aTime = a.createdAt?.seconds || 0;
-          const bTime = b.createdAt?.seconds || 0;
-          return bTime - aTime;
-        });
-
-        setProducts(items);
-      } catch (err) {
-        console.error("❌ Error fetching products:", err);
-      }
-    };
-
-    if (isFocused) {
-      fetchProducts(); // ✅ refresh ทุกครั้งที่กลับมา
-    }
+    return () => unsubscribe();
   }, [isFocused]);
 
-  // กด ⋮
+  // ✅ เมนู
   const openMenu = (post: any) => {
     setSelectedPost(post);
     setShowMenu(true);
   };
 
-  // แก้ไขโพสต์
   const handleEdit = () => {
     if (selectedPost) {
       setShowMenu(false);
@@ -110,7 +101,6 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
-  // ลบโพสต์
   const handleDelete = async () => {
     if (!selectedPost) return;
 
@@ -121,7 +111,7 @@ const ProfileScreen: React.FC = () => {
         style: "destructive",
         onPress: async () => {
           try {
-            // 1. ลบไฟล์รูปจาก Storage
+            // ลบไฟล์จาก Storage
             if (selectedPost.image_urls?.length) {
               for (const url of selectedPost.image_urls) {
                 try {
@@ -134,11 +124,11 @@ const ProfileScreen: React.FC = () => {
               }
             }
 
-            // 2. ลบ document ใน Firestore
+            // ลบ Firestore
             await deleteDoc(doc(db, "products", selectedPost.id));
 
-            // 3. อัปเดต state
-            setProducts(products.filter((p) => p.id !== selectedPost.id));
+            // อัปเดต state
+            setProducts((prev) => prev.filter((p) => p.id !== selectedPost.id));
             setShowMenu(false);
             Alert.alert("Deleted", "โพสต์ถูกลบเรียบร้อยแล้ว ✅");
           } catch (err: any) {
@@ -197,7 +187,6 @@ const ProfileScreen: React.FC = () => {
 
               const profileUrl = `https://psu-marketplace-app.vercel.app/user/${user.uid}`;
               await Clipboard.setStringAsync(profileUrl);
-
               Alert.alert("Copied!", "Profile link copied to clipboard ✅");
             }}
           >
@@ -310,7 +299,7 @@ const ProfileScreen: React.FC = () => {
             ))}
       </ScrollView>
 
-      {/* Modal เมนูแก้ไข/ลบ */}
+      {/* Modal */}
       <Modal transparent visible={showMenu} animationType="fade">
         <TouchableOpacity
           style={styles.modalOverlay}
@@ -365,11 +354,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#ddd",
     marginBottom: 12,
   },
-  tabItem: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
+  tabItem: { flex: 1, paddingVertical: 12, alignItems: "center" },
   tabText: { fontSize: 16, color: "gray" },
   activeTab: { borderBottomWidth: 2, borderBottomColor: "#2C32FA" },
   activeTabText: { color: "#000", fontWeight: "700" },
