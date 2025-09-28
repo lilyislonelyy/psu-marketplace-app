@@ -16,10 +16,8 @@ import {
   Dimensions,
   Image,
   ImageBackground,
-  ImageSourcePropType,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   Pressable,
@@ -34,6 +32,7 @@ const Index: React.FC = () => {
   const router = useRouter();
   const isFocused = useIsFocused();
 
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [disliked, setDisliked] = useState<any[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -44,6 +43,23 @@ const Index: React.FC = () => {
 
   const currentProduct = products[currentIndex];
   const images: string[] = currentProduct?.image_urls || [];
+
+  // โหลดโปรไฟล์
+  const fetchUserProfile = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        console.log("🔥 User profile data:", data); // Debug log
+        setProfileImage(data.photoURL || null); // ✅ ใช้ photoURL ให้ตรงกับ EditProfile
+      }
+    } catch (err) {
+      console.error("❌ Error fetching profile:", err);
+    }
+  };
 
   // โหลด favorites
   const fetchFavorites = async () => {
@@ -79,6 +95,7 @@ const Index: React.FC = () => {
 
   useEffect(() => {
     if (isFocused) {
+      fetchUserProfile();
       fetchFavorites().then(() => fetchProducts());
     }
   }, [isFocused]);
@@ -153,14 +170,17 @@ const Index: React.FC = () => {
         {/* Header */}
         <View style={styles.header}>
           <Image
-            source={require("../../assets/Profile.png") as ImageSourcePropType}
+            source={
+              profileImage
+                ? { uri: profileImage } // ✅ โหลดจาก Firestore
+                : require("../../assets/Profile.png") // default
+            }
             style={styles.profileIcon}
           />
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Text style={styles.headerTitle}>What are you looking for today?</Text>
             <Text style={styles.subTitle}>Welcome to PSU Market place</Text>
           </View>
-          
         </View>
 
         {/* Product card */}
@@ -229,7 +249,7 @@ const Index: React.FC = () => {
           </Animated.View>
         ) : (
           <View style={styles.emptyFeed}>
-            <Text style={{ color: "gray", fontSize: 16 }}>ไม่มีสินค้าเพิ่มเติมแล้ว</Text>
+            <Text style={{ color: "gray", fontSize: 16 }}>No more products avaliable</Text>
             <TouchableOpacity style={styles.refreshBtn} onPress={handleRefresh}>
               <Text>Refresh Feed</Text>
             </TouchableOpacity>
@@ -248,19 +268,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
   headerTitle: { fontSize: 16, fontWeight: "600" },
   subTitle: { fontSize: 12, color: "gray" },
-  profileIcon: { width: 40, height: 40, resizeMode: "contain" },
-  notifyIcon: { width: 24, height: 24 },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f1f1f1",
-    borderRadius: 24,
-    paddingHorizontal: 12,
-    marginBottom: 12,
-    marginHorizontal: 16,
-    height: 50,
-  },
-  iconSmall: { width: 24, height: 24, marginHorizontal: 6, resizeMode: "contain" },
+  profileIcon: { width: 40, height: 40, borderRadius: 20, resizeMode: "cover" },
   productCard: {
     flex: 1,
     borderRadius: 16,
