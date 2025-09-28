@@ -2,31 +2,31 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  setDoc,
-  where,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    orderBy,
+    query,
+    setDoc,
+    where,
 } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { auth, db } from "../firebaseConfig";
+import { auth, db } from "../../firebaseConfig"; // 👈 เปลี่ยน path ให้ถูก (.. 2 ระดับ)
 
 const ProfileView: React.FC = () => {
-  const { uid } = useLocalSearchParams(); // uid ของ seller
+  const { id } = useLocalSearchParams<{ id: string }>(); // ✅ ใช้ id แทน uid
   const router = useRouter();
   const [userData, setUserData] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
@@ -34,10 +34,10 @@ const ProfileView: React.FC = () => {
 
   // ✅ โหลดข้อมูลผู้ขาย
   useEffect(() => {
-    if (!uid) return;
+    if (!id) return;
     const fetchUser = async () => {
       try {
-        const ref = doc(db, "users", uid as string);
+        const ref = doc(db, "users", id as string);
         const snap = await getDoc(ref);
         if (snap.exists()) {
           setUserData(snap.data());
@@ -47,23 +47,23 @@ const ProfileView: React.FC = () => {
       }
     };
     fetchUser();
-  }, [uid]);
+  }, [id]);
 
-  // ✅ โหลดโพสต์ของ seller (เฉพาะที่ยังมีสินค้าเหลือ)
+  // ✅ โหลดโพสต์ของ seller
   useEffect(() => {
-    if (!uid) return;
+    if (!id) return;
     const fetchProducts = async () => {
       try {
         const q = query(
           collection(db, "products"),
-          where("seller_id", "==", uid),
+          where("seller_id", "==", id),
           orderBy("createdAt", "desc")
         );
         const snap = await getDocs(q);
         const items: any[] = [];
         snap.forEach((docSnap) => {
           const data = docSnap.data();
-          if (data.quantity > 0) { // filter client-side
+          if (data.quantity > 0) {
             items.push({ id: docSnap.id, ...data });
           }
         });
@@ -73,7 +73,7 @@ const ProfileView: React.FC = () => {
       }
     };
     fetchProducts();
-  }, [uid]);
+  }, [id]);
 
   // ✅ โหลด favorites ของ user ที่ login อยู่
   useEffect(() => {
@@ -105,13 +105,10 @@ const ProfileView: React.FC = () => {
     try {
       if (favorites.includes(post.id)) {
         await deleteDoc(favRef);
-        setFavorites(favorites.filter((id) => id !== post.id));
+        setFavorites(favorites.filter((fid) => fid !== post.id));
         Alert.alert("Removed", "สินค้านี้ถูกลบออกจาก favorites แล้ว");
       } else {
-        await setDoc(favRef, {
-          ...post,
-          addedAt: new Date(),
-        });
+        await setDoc(favRef, { ...post, addedAt: new Date() });
         setFavorites([...favorites, post.id]);
         Alert.alert("Added", "เพิ่มสินค้าไปที่ favorites แล้ว");
       }
@@ -132,11 +129,9 @@ const ProfileView: React.FC = () => {
         end={{ x: 1, y: 0 }}
         style={styles.header}
       >
-        {/* ปุ่ม X */}
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
           <Ionicons name="close" size={28} color="#fff" />
         </TouchableOpacity>
-
         <Text style={styles.headerTitle}>Profile</Text>
         <View style={{ width: 28 }} />
       </LinearGradient>
@@ -155,7 +150,7 @@ const ProfileView: React.FC = () => {
             source={
               userData?.photoURL
                 ? { uri: userData.photoURL }
-                : require("../assets/Profile.png")
+                : require("../../assets/Profile.png")
             }
             style={styles.avatar}
           />
@@ -163,7 +158,7 @@ const ProfileView: React.FC = () => {
 
         <View style={styles.divider} />
 
-        {/* Posts */}
+        {/* Products */}
         {products.map((p) => (
           <View key={p.id} style={styles.card}>
             <View style={styles.cardHeader}>
@@ -171,7 +166,7 @@ const ProfileView: React.FC = () => {
                 source={
                   userData?.photoURL
                     ? { uri: userData.photoURL }
-                    : require("../assets/Profile.png")
+                    : require("../../assets/Profile.png")
                 }
                 style={styles.cardAvatar}
               />
@@ -182,7 +177,6 @@ const ProfileView: React.FC = () => {
                 </Text>
               </View>
 
-              {/* ปุ่ม Add/Added */}
               <TouchableOpacity
                 onPress={() => toggleFavorite(p)}
                 style={styles.orderBtn}
