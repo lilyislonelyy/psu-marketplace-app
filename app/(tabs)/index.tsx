@@ -32,7 +32,7 @@ const { height } = Dimensions.get("window");
 
 const Index: React.FC = () => {
   const router = useRouter();
-  const isFocused = useIsFocused(); // ✅ detect focus
+  const isFocused = useIsFocused();
   const [products, setProducts] = useState<any[]>([]);
   const [disliked, setDisliked] = useState<any[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -40,20 +40,20 @@ const Index: React.FC = () => {
 
   // โหลด favorites ของ user
   const fetchFavorites = async () => {
-    const user = auth.currentUser;
-    if (!user) return;
+  const user = auth.currentUser;
+  if (!user) return;
 
-    try {
-      const snap = await getDocs(collection(db, "favorites", user.uid, "items"));
-      const favIds: string[] = [];
-      snap.forEach((docSnap) => favIds.push(docSnap.id));
-      setFavorites(favIds);
-    } catch (err) {
-      console.error("❌ Error loading favorites:", err);
-    }
-  };
+  try {
+    const snap = await getDocs(collection(db, "favorites", user.uid, "items")); // ✅ แก้ path
+    const favIds: string[] = [];
+    snap.forEach((docSnap) => favIds.push(docSnap.id));
+    setFavorites(favIds);
+  } catch (err) {
+    console.error("❌ Error loading favorites:", err);
+  }
+};
 
-  // โหลดโพสต์ (ยกเว้นตัวเอง + ที่อยู่ใน favorites)
+  // โหลดโพสต์
   const fetchProducts = async () => {
     try {
       const user = auth.currentUser;
@@ -70,8 +70,8 @@ const Index: React.FC = () => {
       for (const docSnap of snap.docs) {
         const data = docSnap.data();
 
-        if (user && data.seller_id === user.uid) continue; // ข้ามโพสต์ของตัวเอง
-        if (favorites.includes(docSnap.id)) continue; // ข้ามโพสต์ที่ add แล้ว
+        if (user && data.seller_id === user.uid) continue;
+        if (favorites.includes(docSnap.id)) continue;
 
         let sellerName = "Unknown";
         if (data.seller_id) {
@@ -104,7 +104,6 @@ const Index: React.FC = () => {
     }
   };
 
-  // ✅ โหลดใหม่ทุกครั้งที่ focus
   useEffect(() => {
     if (isFocused) {
       fetchFavorites().then(() => fetchProducts());
@@ -122,26 +121,26 @@ const Index: React.FC = () => {
 
   // ปัดขวา = add to favorites
   const handleAddToCart = async () => {
-    if (!currentProduct) return;
-    const user = auth.currentUser;
-    if (!user) return;
+  if (!currentProduct) return;
+  const user = auth.currentUser;
+  if (!user) return;
 
-    try {
-      const favRef = doc(db, "favorites", user.uid, "items", currentProduct.id);
+  try {
+    const favRef = doc(db, "favorites", user.uid, "items", currentProduct.id); // ✅ แก้ path
 
-      await setDoc(favRef, {
-        ...currentProduct,
-        addedAt: new Date(),
-      });
+    await setDoc(favRef, {
+      ...currentProduct,
+      addedAt: new Date(),
+    });
 
-      console.log("✅ Added to favorites:", currentProduct.id);
+    console.log("✅ Added to favorites:", currentProduct.id);
 
-      setFavorites((prev) => [...prev, currentProduct.id]);
-      nextProduct();
-    } catch (err) {
-      console.error("❌ Error adding to favorites:", err);
-    }
-  };
+    setFavorites((prev) => [...prev, currentProduct.id]);
+    nextProduct();
+  } catch (err) {
+    console.error("❌ Error adding to favorites:", err);
+  }
+};
 
   const nextProduct = () => {
     if (currentIndex < products.length - 1) {
@@ -219,8 +218,8 @@ const Index: React.FC = () => {
                   style={styles.metaRow}
                   onPress={() =>
                     router.push({
-                      pathname: "../ProfileView",
-                      params: { uid: currentProduct.seller_id },
+                      pathname: "../ProfileView/[id]",
+                      params: { id: currentProduct.seller_id },
                     })
                   }
                 >
