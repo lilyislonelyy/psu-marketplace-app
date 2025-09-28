@@ -1,6 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
 import React, { useState } from "react";
 import {
@@ -44,71 +44,80 @@ const PostScreen: React.FC = () => {
 
     // 📌 อัปโหลดรูป + Post
     const handlePost = async () => {
-        if (!description.trim()) {
-            Alert.alert("Error", "กรุณาใส่คำอธิบายสินค้า");
-            return;
-        }
+  if (!description.trim()) {
+    Alert.alert("Error", "กรุณาใส่คำอธิบายสินค้า");
+    return;
+  }
 
-        if (!price || isNaN(Number(price)) || Number(price) < 0) {
-            Alert.alert("Error", "กรุณาใส่ราคา และราคาต้องมากกว่าหรือเท่ากับ 0");
-            return;
-        }
+  if (!price || isNaN(Number(price)) || Number(price) < 0) {
+    Alert.alert("Error", "กรุณาใส่ราคา และราคาต้องมากกว่าหรือเท่ากับ 0");
+    return;
+  }
 
-        if (!type || (type !== "Used" && type !== "New")) {
-            Alert.alert("Error", "กรุณาเลือกประเภทสินค้า (มือหนึ่งหรือมือสอง)");
-            return;
-        }
+  if (!type || (type !== "Used" && type !== "New")) {
+    Alert.alert("Error", "กรุณาเลือกประเภทสินค้า (มือหนึ่งหรือมือสอง)");
+    return;
+  }
 
-        if (!quantity || isNaN(Number(quantity)) || Number(quantity) < 1) {
-            Alert.alert("Error", "กรุณาใส่จำนวนสินค้า และต้องมากกว่าหรือเท่ากับ 1");
-            return;
-        }
+  if (!quantity || isNaN(Number(quantity)) || Number(quantity) < 1) {
+    Alert.alert("Error", "กรุณาใส่จำนวนสินค้า และต้องมากกว่าหรือเท่ากับ 1");
+    return;
+  }
 
-        if (images.length === 0) {
-            Alert.alert("Error", "กรุณาเลือกรูปสินค้าอย่างน้อย 1 รูป");
-            return;
-        }
+  if (images.length === 0) {
+    Alert.alert("Error", "กรุณาเลือกรูปสินค้าอย่างน้อย 1 รูป");
+    return;
+  }
 
-        try {
-            const user = auth.currentUser;
-            if (!user) return;
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
 
-            // 1) upload รูปทั้งหมด
-            const uploadedUrls: string[] = [];
-            for (const uri of images) {
-                const response = await fetch(uri);
-                const blob = await response.blob();
-                const fileRef = ref(storage, `product_images/${Date.now()}.jpg`);
-                await uploadBytes(fileRef, blob);
-                const url = await getDownloadURL(fileRef);
-                uploadedUrls.push(url);
-            }
+    // 👉 ดึงชื่อจาก users collection
+    let sellerName = user.email; // fallback = email
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    if (userDoc.exists()) {
+      sellerName = userDoc.data().name || sellerName;
+    }
 
-            // 2) save product ลง Firestore
-            await addDoc(collection(db, "products"), {
-                seller_id: user.uid,
-                title: description.split(" ")[0] || "Untitled", // ใช้คำแรกเป็น title
-                description,
-                price: Number(price),
-                quantity: Number(quantity),
-                type,
-                location,
-                image_urls: uploadedUrls,
-                is_sold_out: false,
-                createdAt: serverTimestamp(),
-            });
+    // 1) upload รูปทั้งหมด
+    const uploadedUrls: string[] = [];
+    for (const uri of images) {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const fileRef = ref(storage, `product_images/${Date.now()}.jpg`);
+      await uploadBytes(fileRef, blob);
+      const url = await getDownloadURL(fileRef);
+      uploadedUrls.push(url);
+    }
 
-            Alert.alert("Success", "โพสต์สินค้าสำเร็จ!");
-            setDescription("");
-            setPrice("");
-            setLocation("");
-            setType("");
-            setQuantity("");
-            setImages([]);
-        } catch (err: any) {
-            Alert.alert("Error", err.message);
-        }
-    };
+    // 2) save product ลง Firestore
+    await addDoc(collection(db, "products"), {
+      seller_id: user.uid,
+      seller_name: sellerName, // 👈 เก็บชื่อผู้ขาย
+      title: description.split(" ")[0] || "Untitled",
+      description,
+      price: Number(price),
+      quantity: Number(quantity),
+      type,
+      location,
+      image_urls: uploadedUrls,
+      is_sold_out: false,
+      createdAt: serverTimestamp(),
+    });
+
+    Alert.alert("Success", "โพสต์สินค้าสำเร็จ!");
+    setDescription("");
+    setPrice("");
+    setLocation("");
+    setType("");
+    setQuantity("");
+    setImages([]);
+  } catch (err: any) {
+    Alert.alert("Error", err.message);
+  }
+};
+    
 
 
 
