@@ -3,27 +3,28 @@ import * as Clipboard from "expo-clipboard";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
-    collection,
-    deleteDoc,
-    doc,
-    getDoc,
-    getDocs,
-    query,
-    where,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
 } from "firebase/firestore";
 import { deleteObject, getStorage, ref } from "firebase/storage";
 import React, { useEffect, useState } from "react";
 import {
-    Alert,
-    Image,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useIsFocused } from "@react-navigation/native"; // ✅ ใช้ hook นี้
 import { auth, db } from "../../firebaseConfig";
 
 const storage = getStorage();
@@ -35,8 +36,9 @@ const ProfileScreen: React.FC = () => {
   const [showMenu, setShowMenu] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const router = useRouter();
+  const isFocused = useIsFocused(); // ✅ ตรวจว่าอยู่หน้า Profile หรือไม่
 
-  // ✅ โหลดข้อมูลผู้ใช้
+  // โหลดข้อมูลผู้ใช้
   useEffect(() => {
     const fetchUser = async () => {
       const user = auth.currentUser;
@@ -56,7 +58,7 @@ const ProfileScreen: React.FC = () => {
     fetchUser();
   }, []);
 
-  // ✅ โหลดสินค้าเฉพาะที่ user โพสต์
+  // โหลดโพสต์ใหม่ทุกครั้งที่เข้ามาหน้า Profile
   useEffect(() => {
     const fetchProducts = async () => {
       const user = auth.currentUser;
@@ -86,16 +88,18 @@ const ProfileScreen: React.FC = () => {
       }
     };
 
-    fetchProducts();
-  }, []);
+    if (isFocused) {
+      fetchProducts(); // ✅ refresh ทุกครั้งที่กลับมา
+    }
+  }, [isFocused]);
 
-  // ✅ กด ⋮
+  // กด ⋮
   const openMenu = (post: any) => {
     setSelectedPost(post);
     setShowMenu(true);
   };
 
-  // ✅ แก้ไขโพสต์
+  // แก้ไขโพสต์
   const handleEdit = () => {
     if (selectedPost) {
       setShowMenu(false);
@@ -106,7 +110,7 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
-  // ✅ ลบโพสต์
+  // ลบโพสต์
   const handleDelete = async () => {
     if (!selectedPost) return;
 
@@ -165,9 +169,7 @@ const ProfileScreen: React.FC = () => {
             <Text style={styles.faculty}>
               {userData?.faculty || "Faculty / Department"}
             </Text>
-            <Text style={styles.instagram}>
-              {userData?.instagram || ""}
-            </Text>
+            <Text style={styles.instagram}>{userData?.instagram || ""}</Text>
           </View>
           <Image
             source={
@@ -179,35 +181,32 @@ const ProfileScreen: React.FC = () => {
           />
         </View>
 
-         {/* Buttons */}
-                <View style={styles.buttonRow}>
-                    <TouchableOpacity
-                        style={styles.editButton}
-                        onPress={() => router.push("../EditProfile")}
-                    >
-                        <Text style={styles.editButtonText}>Edit profile</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-  style={styles.editButton}
-  onPress={async () => {
-    const user = auth.currentUser;
-    if (!user) return;
+        {/* Buttons */}
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => router.push("../EditProfile")}
+          >
+            <Text style={styles.editButtonText}>Edit profile</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={async () => {
+              const user = auth.currentUser;
+              if (!user) return;
 
-    // 👇 สร้าง URL ของโปรไฟล์
-    const profileUrl = `https://psu-marketplace-app.vercel.app/user/${user.uid}`;
+              const profileUrl = `https://psu-marketplace-app.vercel.app/user/${user.uid}`;
+              await Clipboard.setStringAsync(profileUrl);
 
-    // 👇 คัดลอกไป clipboard
-    await Clipboard.setStringAsync(profileUrl);
+              Alert.alert("Copied!", "Profile link copied to clipboard ✅");
+            }}
+          >
+            <Text style={styles.editButtonText}>Share profile</Text>
+          </TouchableOpacity>
+        </View>
 
-    Alert.alert("Copied!", "Profile link copied to clipboard ✅");
-  }}
->
-  <Text style={styles.editButtonText}>Share profile</Text>
-</TouchableOpacity>
-
-                </View>
-                {/* Divider */}
-                <View style={styles.divider} />
+        {/* Divider */}
+        <View style={styles.divider} />
 
         {/* Tabs */}
         <View style={styles.tabs}>
@@ -258,7 +257,7 @@ const ProfileScreen: React.FC = () => {
                     <Ionicons name="ellipsis-vertical" size={20} color="gray" />
                   </TouchableOpacity>
                 </View>
-                {/* ✅ โชว์รูปหลายรูปเลื่อนซ้ายขวา */}
+
                 <ScrollView
                   horizontal
                   pagingEnabled
@@ -295,7 +294,7 @@ const ProfileScreen: React.FC = () => {
                     <Ionicons name="ellipsis-vertical" size={20} color="gray" />
                   </TouchableOpacity>
                 </View>
-                {/* ✅ รูปหลายรูปเลื่อนซ้ายขวา */}
+
                 <ScrollView
                   horizontal
                   pagingEnabled
@@ -350,7 +349,6 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   content: { padding: 16 },
-
   profileRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -361,7 +359,6 @@ const styles = StyleSheet.create({
   faculty: { color: "gray", marginBottom: 2 },
   instagram: { color: "#3366cc" },
   avatar: { width: 70, height: 70, borderRadius: 35 },
-
   tabs: {
     flexDirection: "row",
     borderBottomWidth: 1,
@@ -376,7 +373,6 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 16, color: "gray" },
   activeTab: { borderBottomWidth: 2, borderBottomColor: "#2C32FA" },
   activeTabText: { color: "#000", fontWeight: "700" },
-
   card: {
     backgroundColor: "#fff",
     borderRadius: 12,
@@ -397,7 +393,6 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
     marginRight: 10,
   },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.3)",
@@ -413,22 +408,22 @@ const styles = StyleSheet.create({
   menuItem: { paddingVertical: 12 },
   menuText: { fontSize: 16, fontWeight: "600", textAlign: "center" },
   divider: {
-        borderBottomWidth: 1,
-        borderBottomColor: "#ddd",
-        marginVertical: 5,
-    },
-    buttonRow: {
-        flexDirection: "row",
-        justifyContent: "center",
-        marginBottom: 20,
-        gap: 10,
-    },
-    editButton: {
-        borderWidth: 1,
-        borderColor: "#ccc",
-        borderRadius: 8,
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-    },
-    editButtonText: { fontWeight: "600" },
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
+    marginVertical: 5,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 20,
+    gap: 10,
+  },
+  editButton: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  editButtonText: { fontWeight: "600" },
 });

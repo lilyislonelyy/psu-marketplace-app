@@ -54,26 +54,34 @@ const Index: React.FC = () => {
       if (userDoc.exists()) {
         const data = userDoc.data();
         console.log("🔥 User profile data:", data);
-        setProfileImage(data.photoURL || null); // ✅ ใช้ photoURL ให้ตรงกับ EditProfile
+        setProfileImage(data.photoURL || null);
       }
     } catch (err) {
       console.error("❌ Error fetching profile:", err);
     }
   };
 
-  // โหลด favorites
-  const fetchFavorites = async () => {
+  // โหลด favorites → return favIds
+  const fetchFavorites = async (): Promise<string[]> => {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) {
+      setFavorites([]);
+      return [];
+    }
     const snap = await getDocs(collection(db, "favorites", user.uid, "items"));
     const favIds: string[] = [];
     snap.forEach((docSnap) => favIds.push(docSnap.id));
     setFavorites(favIds);
+    return favIds; // ✅ ส่งกลับไปใช้
   };
 
-  // โหลดโพสต์
-  const fetchProducts = async () => {
+  // โหลดโพสต์ → ใช้ favIds ที่ได้จาก fetchFavorites
+  const fetchProducts = async (favIds: string[] = []) => {
     const user = auth.currentUser;
+    if (!user) {
+      setProducts([]);
+      return;
+    }
     const q = query(
       collection(db, "products"),
       where("quantity", ">", 0),
@@ -84,8 +92,8 @@ const Index: React.FC = () => {
     const items: any[] = [];
     for (const docSnap of snap.docs) {
       const data = docSnap.data();
-      if (user && data.seller_id === user.uid) continue; // ✅ เช็ก user null ก่อน
-      if (favorites.includes(docSnap.id)) continue;
+      if (user && data.seller_id === user.uid) continue;
+      if (favIds.includes(docSnap.id)) continue; // ✅ ใช้ favIds แทน state
       items.push({ id: docSnap.id, ...data });
     }
     setProducts(items);
@@ -97,7 +105,7 @@ const Index: React.FC = () => {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (!user) {
-        // ✅ clear state ถ้า log out
+        // clear state ถ้า log out
         setProfileImage(null);
         setProducts([]);
         setFavorites([]);
@@ -105,9 +113,13 @@ const Index: React.FC = () => {
         setCurrentIndex(0);
         setImageIndex(0);
       } else {
-        // ✅ ถ้า login แล้วโหลดข้อมูล
-        fetchUserProfile();
-        fetchFavorites().then(() => fetchProducts());
+        // ถ้า login แล้วโหลดข้อมูล
+        const loadData = async () => {
+          await fetchUserProfile();
+          const favIds = await fetchFavorites();
+          await fetchProducts(favIds); // ✅ ใช้ favIds ที่ได้
+        };
+        loadData();
       }
     });
     return () => unsubscribe();
@@ -156,14 +168,9 @@ const Index: React.FC = () => {
     });
   };
 
-  const handleRefresh = () => {
-    if (products.length === 0 && disliked.length > 0) {
-      setProducts(disliked);
-      setDisliked([]);
-      setCurrentIndex(0);
-    } else {
-      fetchProducts();
-    }
+  const handleRefresh = async () => {
+    const favIds = await fetchFavorites();
+    await fetchProducts(favIds);
   };
 
   // ---------- Image navigation ----------
