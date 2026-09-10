@@ -1,5 +1,6 @@
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
+import { useIsFocused } from "expo-router/react-navigation";
 import {
   collection,
   doc,
@@ -10,21 +11,20 @@ import {
   setDoc,
   where,
 } from "firebase/firestore";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
   Image,
   ImageBackground,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { auth, db } from "../../firebaseConfig";
-import { useIsFocused } from "@react-navigation/native";
 
 const { width } = Dimensions.get("window");
 
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
     borderRadius: 2,
   },
-  clickRow: { ...StyleSheet.absoluteFillObject, flexDirection: "row" },
+  clickRow: { ...StyleSheet.absoluteFill, flexDirection: "row" },
   productInfoWrapper: {
     position: "absolute",
     bottom: 90,
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
   },
-  productInfoOverlay: { ...StyleSheet.absoluteFillObject },
+  productInfoOverlay: { ...StyleSheet.absoluteFill },
   productInfo: { padding: 12 },
   productTitle: { fontSize: 20, fontWeight: "bold", color: "#fff" },
   price: { fontSize: 14, color: "#fff" },

@@ -2,6 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useIsFocused } from "expo-router/react-navigation";
+import { onAuthStateChanged } from "firebase/auth"; // ✅ import
 import {
   collection,
   deleteDoc,
@@ -24,9 +26,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useIsFocused } from "@react-navigation/native";
 import { auth, db } from "../../firebaseConfig";
-import { onAuthStateChanged } from "firebase/auth"; // ✅ import
 
 const storage = getStorage();
 
