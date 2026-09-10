@@ -9,8 +9,12 @@ const TabLayout: React.FC = () => {
         headerShown: false,
         tabBarShowLabel: false, // ไม่โชว์ชื่อใต้ไอคอน
         tabBarStyle: {
-          height: 60,
+          height: 90,
           backgroundColor: "#fff",
+          flexDirection: "row",
+          alignItems: "center",   // 👉 จัดให้แนวตั้งอยู่ตรงกลาง header
+          justifyContent: "space-between",
+          paddingHorizontal: 16,
         },
       }}
     >
@@ -31,7 +35,7 @@ const TabLayout: React.FC = () => {
       />
 
       <Tabs.Screen
-        name="cart"
+        name="order"
         options={{
           tabBarIcon: ({ focused }: { focused: boolean }) => (
             <Image
@@ -47,14 +51,14 @@ const TabLayout: React.FC = () => {
       />
 
       <Tabs.Screen
-        name="add"
+        name="post"
         options={{
           tabBarIcon: ({ focused }: { focused: boolean }) => (
             <Image
               source={require("../../assets/tabs/Add.png") as ImageSourcePropType}
               style={{
-                width: 32,
-                height: 32,
+                width: 28,
+                height: 28,
                 tintColor: focused ? "#2C32FA" : "#7D848F",
               }}
             />
@@ -70,7 +74,7 @@ const TabLayout: React.FC = () => {
               source={require("../../assets/tabs/Chat.png") as ImageSourcePropType}
               style={{
                 width: 28,
-                height: 28,
+                height: 25,
                 tintColor: focused ? "#2C32FA" : "#7D848F",
               }}
             />
@@ -85,7 +89,7 @@ const TabLayout: React.FC = () => {
             <Image
               source={require("../../assets/tabs/Profile.png") as ImageSourcePropType}
               style={{
-                width: 28,
+                width: 22,
                 height: 28,
                 tintColor: focused ? "#2C32FA" : "#7D848F",
               }}

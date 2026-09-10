@@ -1,115 +1,286 @@
-// app/(tabs)/index.tsx
 import { BlurView } from "expo-blur";
-import React from "react";
+import { useRouter } from "expo-router";
+import { useIsFocused } from "expo-router/react-navigation";
 import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  setDoc,
+  where,
+} from "firebase/firestore";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Dimensions,
   Image,
   ImageBackground,
-  ImageSourcePropType,
+  Pressable,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { auth, db } from "../../firebaseConfig";
+
+const { width } = Dimensions.get("window");
 
 const Index: React.FC = () => {
+  const router = useRouter();
+  const isFocused = useIsFocused();
+
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [products, setProducts] = useState<any[]>([]);
+  const [disliked, setDisliked] = useState<any[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [imageIndex, setImageIndex] = useState(0);
+
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  const currentProduct = products[currentIndex];
+  const images: string[] = currentProduct?.image_urls || [];
+
+  // โหลดโปรไฟล์
+  const fetchUserProfile = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        console.log("🔥 User profile data:", data);
+        setProfileImage(data.photoURL || null);
+      }
+    } catch (err) {
+      console.error("❌ Error fetching profile:", err);
+    }
+  };
+
+  // โหลด favorites → return favIds
+  const fetchFavorites = async (): Promise<string[]> => {
+  const user = auth.currentUser;
+  if (!user) {
+    setFavorites([]); // ✅ clear ถ้า logout
+    return [];        // ✅ คืน array ว่างแทน query
+  }
+
+  try {
+    const snap = await getDocs(collection(db, "favorites", user.uid, "items"));
+    const favIds: string[] = [];
+    snap.forEach((docSnap) => favIds.push(docSnap.id));
+    setFavorites(favIds);
+    return favIds;
+  } catch (err) {
+    console.error("❌ Error fetching favorites:", err);
+    return []; // ป้องกัน error เด้ง
+  }
+};
+
+  // โหลดโพสต์ → ใช้ favIds ที่ได้จาก fetchFavorites
+  const fetchProducts = async (favIds: string[] = []) => {
+    const user = auth.currentUser;
+    if (!user) {
+      setProducts([]);
+      return;
+    }
+    const q = query(
+      collection(db, "products"),
+      where("quantity", ">", 0),
+      orderBy("createdAt", "desc")
+    );
+    const snap = await getDocs(q);
+
+    const items: any[] = [];
+    for (const docSnap of snap.docs) {
+      const data = docSnap.data();
+      if (user && data.seller_id === user.uid) continue;
+      if (favIds.includes(docSnap.id)) continue; // ✅ ใช้ favIds แทน state
+      items.push({ id: docSnap.id, ...data });
+    }
+    setProducts(items);
+    setCurrentIndex(0);
+    setImageIndex(0);
+  };
+
+  // ดักการเปลี่ยนสถานะ user (login/logout)
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) {
+        // clear state ถ้า log out
+        setProfileImage(null);
+        setProducts([]);
+        setFavorites([]);
+        setDisliked([]);
+        setCurrentIndex(0);
+        setImageIndex(0);
+      } else {
+        // ถ้า login แล้วโหลดข้อมูล
+        const loadData = async () => {
+          await fetchUserProfile();
+          const favIds = await fetchFavorites();
+          await fetchProducts(favIds); // ✅ ใช้ favIds ที่ได้
+        };
+        loadData();
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // ---------- Slide ----------
+  const animateSlide = (direction: "left" | "right", onEnd?: () => void) => {
+    Animated.timing(slideAnim, {
+      toValue: direction === "left" ? -width : width,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      slideAnim.setValue(0);
+      onEnd && onEnd();
+    });
+  };
+
+  const nextProduct = () => {
+    if (currentIndex < products.length - 1) {
+      setCurrentIndex((prev) => prev + 1);
+      setImageIndex(0);
+    } else {
+      setProducts([]);
+    }
+  };
+
+  // ❌ Dislike
+  const handleDislike = () => {
+    if (!currentProduct) return;
+    animateSlide("left", () => {
+      setDisliked((prev) => [...prev, currentProduct]);
+      nextProduct();
+    });
+  };
+
+  // ✅ Like
+  const handleAddToCart = async () => {
+    if (!currentProduct) return;
+    const user = auth.currentUser;
+    if (!user) return;
+    const favRef = doc(db, "favorites", user.uid, "items", currentProduct.id);
+    await setDoc(favRef, { ...currentProduct, addedAt: new Date() });
+    animateSlide("right", () => {
+      setFavorites((prev) => [...prev, currentProduct.id]);
+      nextProduct();
+    });
+  };
+
+  const handleRefresh = async () => {
+    const favIds = await fetchFavorites();
+    await fetchProducts(favIds);
+  };
+
+  // ---------- Image navigation ----------
+  const handleImageTap = (side: "left" | "right") => {
+    if (!images.length) return;
+    if (side === "right" && imageIndex < images.length - 1) {
+      setImageIndex((prev) => prev + 1);
+    }
+    if (side === "left" && imageIndex > 0) {
+      setImageIndex((prev) => prev - 1);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <Image
-            source={require("../../assets/Profile.png") as ImageSourcePropType}
+            source={
+              profileImage
+                ? { uri: profileImage }
+                : require("../../assets/Profile.png")
+            }
             style={styles.profileIcon}
           />
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Text style={styles.headerTitle}>What are you looking for today?</Text>
             <Text style={styles.subTitle}>Welcome to PSU Market place</Text>
           </View>
-          <Image
-            source={require("../../assets/Notification.png") as ImageSourcePropType}
-            style={styles.notifyIcon}
-          />
-        </View>
-
-        {/* Search bar */}
-        <View style={styles.searchBar}>
-          <Image
-            source={require("../../assets/Search.png") as ImageSourcePropType}
-            style={styles.iconSmall}
-          />
-          <TextInput
-            placeholder="Looking for something special?"
-            style={{ flex: 1 }}
-          />
-          <Image
-            source={require("../../assets/Filter.png") as ImageSourcePropType}
-            style={styles.iconSmall}
-          />
         </View>
 
         {/* Product card */}
-        <ImageBackground
-          source={{ uri: "https://picsum.photos/500" }}
-          style={[styles.productCard, { paddingBottom: 20 }]}
-          imageStyle={{ borderRadius: 16 }}
-        >
-          {/* ข้อมูลสินค้า */}
-          <View style={styles.productInfoWrapper}>
-            <BlurView intensity={50} tint="dark" style={styles.productInfoOverlay} />
-            <View style={styles.productInfo}>
-              <Text style={styles.productTitle}>
-                Product <Text style={styles.price}>(Used/New)</Text>
-              </Text>
-              <Text style={styles.meta}>Quantity / Stock</Text>
-
-              <View style={styles.metaRow}>
-                <Image
-                  source={require("../../assets/home/ShopName.png") as ImageSourcePropType}
-                  style={styles.metaIcon}
-                />
-                <Text style={styles.meta}>Seller / Shop Name</Text>
+        {currentProduct ? (
+          <Animated.View style={{ flex: 1, transform: [{ translateX: slideAnim }] }}>
+            <ImageBackground
+              source={{ uri: images[imageIndex] }}
+              style={styles.productCard}
+              imageStyle={{ borderRadius: 16 }}
+            >
+              {/* Progress bar */}
+              <View style={styles.progressRow}>
+                {images.map((_: string, idx: number) => (
+                  <View
+                    key={idx}
+                    style={[
+                      styles.progressBar,
+                      { opacity: idx === imageIndex ? 1 : 0.3 },
+                    ]}
+                  />
+                ))}
               </View>
 
-              <View style={styles.metaRow}>
-                <Image
-                  source={require("../../assets/home/Location.png") as ImageSourcePropType}
-                  style={styles.metaIcon}
-                />
-                <Text style={styles.meta}>Faculty / Department / Address</Text>
+              {/* Click zones */}
+              <View style={styles.clickRow}>
+                <Pressable style={{ flex: 1 }} onPress={() => handleImageTap("left")} />
+                <Pressable style={{ flex: 1 }} onPress={() => handleImageTap("right")} />
               </View>
-            </View>
-          </View>
 
-          {/* ปุ่ม action */}
-          <View style={styles.actionRow}>
-            <TouchableOpacity>
-              <Image
-                source={require("../../assets/home/Refresh.png") as ImageSourcePropType}
-                style={styles.actionIcon}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Image
-                source={require("../../assets/home/X.png") as ImageSourcePropType}
-                style={styles.actionIcon}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Image
-                source={require("../../assets/home/Like.png") as ImageSourcePropType}
-                style={styles.actionIcon}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Image
-                source={require("../../assets/home/Cart.png") as ImageSourcePropType}
-                style={styles.actionIcon}
-              />
+              {/* ข้อมูลสินค้า */}
+              <View style={styles.productInfoWrapper}>
+                <BlurView intensity={50} tint="dark" style={styles.productInfoOverlay} />
+                <View style={styles.productInfo}>
+                  <Text style={styles.productTitle}>
+                    {currentProduct.description}{" "}
+                    <Text style={styles.price}>({currentProduct.type})</Text>
+                  </Text>
+                  <Text style={styles.meta}>
+                    {currentProduct.price}฿ • {currentProduct.quantity} pcs
+                  </Text>
+                </View>
+              </View>
+
+              {/* ปุ่ม action */}
+              <View style={styles.actionRow}>
+                <TouchableOpacity onPress={handleDislike}>
+                  <Image
+                    source={require("../../assets/home/X.png")}
+                    style={styles.actionIcon}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleRefresh}>
+                  <Image
+                    source={require("../../assets/home/Refresh.png")}
+                    style={styles.actionIcon}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleAddToCart}>
+                  <Image
+                    source={require("../../assets/home/Cart.png")}
+                    style={styles.actionIcon}
+                  />
+                </TouchableOpacity>
+              </View>
+            </ImageBackground>
+          </Animated.View>
+        ) : (
+          <View style={styles.emptyFeed}>
+            <Text style={{ color: "gray", fontSize: 16 }}>No more products available</Text>
+            <TouchableOpacity style={styles.refreshBtn} onPress={handleRefresh}>
+              <Text>Refresh Feed</Text>
             </TouchableOpacity>
           </View>
-        </ImageBackground>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -123,42 +294,42 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
   headerTitle: { fontSize: 16, fontWeight: "600" },
   subTitle: { fontSize: 12, color: "gray" },
-  profileIcon: { width: 40, height: 40, resizeMode: "contain" },
-  notifyIcon: { width: 24, height: 24 },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f1f1f1",
-    borderRadius: 24,
-    paddingHorizontal: 12,
-    marginBottom: 12,
-    marginHorizontal: 16,
-    height: 50,
-  },
-  iconSmall: { width: 24, height: 24, marginHorizontal: 6, resizeMode: "contain" },
+  profileIcon: { width: 40, height: 40, borderRadius: 20, resizeMode: "cover" },
   productCard: {
     flex: 1,
     borderRadius: 16,
     padding: 16,
     justifyContent: "flex-end",
+    marginBottom: 16,
   },
+  progressRow: {
+    flexDirection: "row",
+    position: "absolute",
+    top: 10,
+    left: 10,
+    right: 10,
+  },
+  progressBar: {
+    flex: 1,
+    height: 4,
+    backgroundColor: "#fff",
+    marginHorizontal: 2,
+    borderRadius: 2,
+  },
+  clickRow: { ...StyleSheet.absoluteFill, flexDirection: "row" },
   productInfoWrapper: {
-    marginBottom: 100,
+    position: "absolute",
+    bottom: 90,
+    left: 0,
+    right: 0,
     borderRadius: 12,
     overflow: "hidden",
-    position: "relative",
   },
-  productInfoOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  productInfo: {
-    padding: 12,
-  },
+  productInfoOverlay: { ...StyleSheet.absoluteFill },
+  productInfo: { padding: 12 },
   productTitle: { fontSize: 20, fontWeight: "bold", color: "#fff" },
   price: { fontSize: 14, color: "#fff" },
   meta: { fontSize: 12, color: "#fff", marginTop: 2 },
-  metaRow: { flexDirection: "row", alignItems: "center", marginTop: 4 },
-  metaIcon: { width: 16, height: 16, marginRight: 6, resizeMode: "contain" },
   actionRow: {
     position: "absolute",
     bottom: 20,
@@ -168,4 +339,21 @@ const styles = StyleSheet.create({
     justifyContent: "space-evenly",
   },
   actionIcon: { width: 60, height: 60, resizeMode: "contain" },
+  emptyFeed: {
+    flex: 1,
+    marginTop: 40,
+    borderRadius: 16,
+    backgroundColor: "#f2f2f2",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  refreshBtn: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderRadius: 10,
+    backgroundColor: "#fff",
+  },
 });

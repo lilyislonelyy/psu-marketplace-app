@@ -1,26 +1,25 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-    Alert,
-    Image,
-    ImageSourcePropType,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  ImageSourcePropType,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // Firebase
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, getFirestore, setDoc } from "firebase/firestore";
-import { auth } from "../firebaseConfig";
-
-const db = getFirestore();
+import { doc, setDoc } from "firebase/firestore";
+import { auth, db } from "../firebaseConfig";
 
 const RegisterScreen: React.FC = () => {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -32,7 +31,7 @@ const RegisterScreen: React.FC = () => {
     }
 
     try {
-      // สมัครด้วย Firebase Authentication
+      // สมัครสมาชิก
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -40,14 +39,19 @@ const RegisterScreen: React.FC = () => {
       );
       const user = userCredential.user;
 
-      // 👉 บันทึกข้อมูลผู้ใช้เพิ่มใน Firestore
+      // สร้าง document ใน Firestore
       await setDoc(doc(db, "users", user.uid), {
         email: user.email,
+        // ✅ ตั้งชื่อ default เป็น user + 6 ตัวแรกของ uid
+        name: "user" + user.uid.substring(0, 6),
+        faculty: "",
+        phone: "",
+        instagram: "",
         createdAt: new Date(),
       });
 
       Alert.alert("Success", "Account created for " + user.email);
-      // 👉 ตรงนี้คุณสามารถ Redirect ไปหน้า Login หรือ Home ได้
+      router.push("/SigninScreen"); // ไปหน้า Sign in
     } catch (error: any) {
       Alert.alert("Registration Error", error.message);
     }
@@ -56,11 +60,8 @@ const RegisterScreen: React.FC = () => {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-
       <LinearGradient
         colors={["#AAFFE7", "#638CF2", "#0D00FF"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
         style={styles.container}
       >
         <SafeAreaView style={{ flex: 1 }}>
@@ -71,14 +72,11 @@ const RegisterScreen: React.FC = () => {
                 source={require("../assets/CartLogo.png") as ImageSourcePropType}
                 style={styles.logoImage}
               />
-              <Text style={styles.logoText}>PSU Market place</Text>
+              <TouchableOpacity onPress={() => router.push("/LoginScreen")}>
+                <Text style={styles.logoText}>PSU Market place</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity>
-              <Image
-                source={require("../assets/Language.png") as ImageSourcePropType}
-                style={styles.langIcon}
-              />
-            </TouchableOpacity>
+            
           </View>
 
           {/* Form */}
@@ -111,6 +109,7 @@ const RegisterScreen: React.FC = () => {
               onChangeText={setConfirmPassword}
             />
 
+            {/* Sign up */}
             <TouchableOpacity
               style={styles.signupButton}
               onPress={handleRegister}
@@ -118,7 +117,11 @@ const RegisterScreen: React.FC = () => {
               <Text style={styles.signupText}>Sign up</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.switchButton}>
+            {/* Already have account */}
+            <TouchableOpacity
+              style={styles.switchButton}
+              onPress={() => router.push("/SigninScreen")}
+            >
               <Text style={styles.switchText}>Already have an account</Text>
             </TouchableOpacity>
           </View>
